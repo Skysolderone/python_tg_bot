@@ -1,22 +1,32 @@
 from datetime import datetime,timedelta
 import pandas as pd
-from binance.client import Client
+import os
 class Csv:
     def __init__(self) -> None:
         pass
     def getKline(self,client):
         today=datetime.now()
-        yesterday=today-timedelta(days=1)
-        yesterday_str=yesterday.strftime('%Y-%m-%d')
+        today_str=today.strftime('%Y-%m-%d')
         symbol = 'BTCUSDT'  # 设置交易对
         intervals = ['15m', '30m', '1h', '2h', '4h', '1d']  # 定义时间周期
+        # intervals = ['1d']  # 定义时间周期
         start_date = '2017-08-01'
-        end_date = yesterday_str
+        end_date = today_str
         for interval in intervals:
+            indexpd=f"csv/{interval}.csv"
+            intervavpd=pd.DataFrame()
+            if os.path.exists(indexpd):
+                    intervavpd=pd.read_csv(indexpd)
+                    final=intervavpd.iloc[-1]
+                    if not final.empty:
+                        s=final.to_dict()['timestamp']
+                        start_date=s.replace(' 00:00:00','')
+                    if start_date==end_date:
+                        continue 
             print(f"Fetching {interval} data...")
             klines = self.get_klines(client,symbol, interval, start_date, end_date)
-            filename = f"{interval}.csv"
-            self.save_to_csv(klines, filename)
+            filename = f"csv/{interval}.csv"
+            self.save_to_csv(intervavpd,klines, filename)
             print(f"Data saved to {filename}")
     def get_klines(self,client,symbol, interval, start_str, end_str):
         """
@@ -29,6 +39,7 @@ class Csv:
         :return: K线数据
         """
         klines = []
+        print(start_str)
         start_date = datetime.strptime(start_str, '%Y-%m-%d')
         end_date = datetime.strptime(end_str, '%Y-%m-%d')
         while start_date < end_date:
@@ -41,7 +52,7 @@ class Csv:
             klines.extend(klines_batch)
             start_date = end_date_batch
         return klines
-    def save_to_csv(self,data, filename):
+    def save_to_csv(self,olddata,data, filename):
         df = pd.DataFrame(data, columns=[
             'timestamp', 'open', 'high', 'low', 'close', 'volume', 
             'close_time', 'quote_asset_volume', 'number_of_trades', 
@@ -49,4 +60,11 @@ class Csv:
             'ignore'
         ])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df.to_csv(filename, index=False)
+        df['open']=df['close'].astype(float)
+        df['high']=df['high'].astype(float)
+        df['low']=df['low'].astype(float)
+        df['close']=df['close'].astype(float)
+
+        result=pd.concat([olddata,df])
+     
+        result.to_csv(filename, index=False)

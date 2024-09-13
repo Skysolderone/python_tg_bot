@@ -3,8 +3,10 @@ from binance.exceptions import BinanceAPIException
 import dotenv
 import os
 import pandas as pd
+import ta.momentum
+import ta.volatility
 from get_csv.csvdata import Csv
-
+import ta
 
 def main():
     print("init bot")
@@ -40,13 +42,32 @@ def main():
     df2h=pd.DataFrame(pd2h)
     df4h=pd.DataFrame(pd4h)
     df1d=pd.DataFrame(pd1d)
-    df15m['ema5']=df15m['close'].rolling(window=5).mean()
+    df15m=add_indicator(df15m)
+    df30m=add_indicator(df30m)
+    df1h=add_indicator(df1h)
+    df2h=add_indicator(df2h)
+    df4h=add_indicator(df4h)
+    df1d=add_indicator(df1d)
  
     #anthor get binance kline data save to csv 00:00
     #concat kline data
     #load indicator
     #check indicator
     #run buy|sell
+
+
+
+def add_indicator(df):
+    df['EMA_9']=df['close'].ewm(span=9,adjust=False).mean()
+    df['EMA_21']=df['close'].ewm(span=21,adjust=False).mean()
+    df['SMA_20']=df['close'].rolling(window=20).mean()
+    df['SMA_50']=df['close'].rolling(window=50).mean()
+    df['RSI_14']=ta.momentum.RSIIndicator(close=df['close'],window=14).rsi()
+    df['ATR_14']=ta.volatility.AverageTrueRange(high=df['high'],low=df['low'],close=df['close'],window=14).average_true_range()
+   
+    return df
+
+
 
 if __name__=='__main__':
     main()
