@@ -66,5 +66,6 @@ class Csv:
         df['close']=df['close'].astype(float)
 
         result=pd.concat([olddata,df])
-     
-        result.to_csv(filename, index=False)
+        unique=result.drop_duplicates(subset='timestamp')
+        unique=unique.sort_values(by=['timestamp']).reset_index(drop=True)
+        unique.to_csv(filename, index=False)
