@@ -10,7 +10,8 @@ class Csv:
         symbol = 'BTCUSDT'  # 设置交易对
         intervals = ['15m', '30m', '1h', '2h', '4h', '1d']  # 定义时间周期
         # intervals = ['1d']  # 定义时间周期
-        start_date = '2017-08-01'
+        # start_date = '2017-08-01'  区间太长，狗在创世期间买入现在都是亿万富翁
+        start_date='2024-01-01'
         end_date = today_str
         for interval in intervals:
             indexpd=f"csv/{interval}.csv"
@@ -39,7 +40,7 @@ class Csv:
         :return: K线数据
         """
         klines = []
-        print(start_str)
+        # print(start_str)
         start_date = datetime.strptime(start_str, '%Y-%m-%d')
         end_date = datetime.strptime(end_str, '%Y-%m-%d')
         while start_date < end_date:

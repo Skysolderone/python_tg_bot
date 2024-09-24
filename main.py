@@ -8,8 +8,9 @@ import ta.volatility
 from get_csv.csvdata import Csv
 import ta
 
-position=0
+position=0.01
 price=0.00
+addPosition=0.01
 side=''
 totalBalance=0.00
 totalpnl=0
@@ -80,6 +81,8 @@ def main():
     for i,v in arr.items():
         #check indicator  buy|sell
         buy,sell=generate_signals(v)  
+        buy['signal']='buy'
+        sell['signal']='sell'
         change=pd.DataFrame()
         change=pd.concat([buy,sell])
         change=change.sort_values(by=['timestamp']).reset_index(drop=True)
@@ -89,60 +92,69 @@ def main():
 
 
 def runCheckPnl(change):
-    global totalpnl
+    totalpnl=0.00
+    position=0.01
     side=''
     for index,v in change.iterrows():
-        if v['RSI_14']<=30:
+        if v['signal']=='buy':
             if side=='':
-                position=2
+                position=0.01
                 side='long'
                 totalBalance=position*v['close']
                 pnl=0
                 time=v['timestamp']
-                #print(f'多单买入:{time}-{price}-{position}-{totalBalance}-{side}')
+                print(f'多单买入:{time}-{price}-{position}-{totalBalance}-{side}')
+                continue
             if side=='long':
-                position=position+2
-                totalBalance=totalBalance+v['close']*2
-                price=totalBalance/4
+                position=position+addPosition
+                totalBalance=totalBalance+v['close']*addPosition
+                price=totalBalance/position
                 pnl=0
                 time=v['timestamp']     
-                #print(f'多单补仓:{time}-{price}-{position}-{totalBalance}-{side}')
+                print(f'多单补仓:{time}-持仓均价{price}-{position}-{totalBalance}-{side}')
+                continue
 
             if side=='short':
                 price=v['close']
-                sellbalance=price*position
-                pnl=sellbalance-totalBalance
+                sellbalance=price*position  
+                pnl=totalBalance-sellbalance
                 side=''
-                if pnl<0:
-                    totalpnl=totalpnl-pnl
-                else :
-                     totalpnl=totalpnl+pnl
+                totalpnl=totalpnl+pnl
+                # if pnl<0:
+                #     totalpnl=totalpnl-pnl
+                # else :
+                #     totalpnl=totalpnl+pnl
                 time=v['timestamp']
-                #print(f'空单平仓:{time}-{price}-{position}-{totalBalance}-{side}-{pnl}')
-        if v['RSI_14']>=70:
+                print(f'空单平仓:{time}|{price}|{position}-{totalBalance}|{pnl}')
+                continue
+        if v['signal']=='sell':
             if side=='':
-                position=2
                 side='short'
                 totalBalance=position*v['close']
                 price=v['close']
                 pnl=0
                 time=v['timestamp']
-                #print(f'空单开仓:{time}-{price}-{position}-{totalBalance}-{side}')
+                print(f'空单开仓:{time}-{price}-{position}-{totalBalance}-{side}')
+                continue
             if side=='long':
                 price=v['close']
                 sellbalance=price*position
-                pnl=sellbalance-totalBalance
+                pnl=totalBalance-sellbalance
                 side=''
                 totalpnl=totalpnl+pnl
                 time=v['timestamp']
-                #print(f'多单平仓:{time}-{price}-{position}-{totalBalance}-{side}-{pnl}')
+                print(f'多单平仓:{time}|{price}|{position}|{totalBalance}|{pnl}')
+                continue
             if side=='short':
-                position=position+2
-                totalBalance=totalBalance+v['close']*2
-                price=totalBalance/4
+                position=position+addPosition
+                
+                totalBalance=totalBalance+v['close']*addPosition
+                
+                price=totalBalance/position
                 pnl=0
                 time=v['timestamp']
-                #print(f'空单补仓:{time}-{price}-{position}-{totalBalance}-{side}')
+                print(f'空单补仓:{time}-持仓均价{price}-{position}-{totalBalance}-{side}')
+                continue
     return totalpnl
 
 
@@ -161,7 +173,6 @@ def add_indicator(df):
 
 
 def generate_signals(df):
-    print('generate signal')
     buy_signals=[]
     sell_signals=[]
     for i in range(1,len(df)):
