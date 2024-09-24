@@ -43,7 +43,7 @@ def main():
     pd1h=pd.read_csv('csv/1h.csv')
     pd2h=pd.read_csv('csv/2h.csv')
     pd4h=pd.read_csv('csv/4h.csv')
-    pd1d=pd.read_csv('csv/1d.csv')
+    # pd1d=pd.read_csv('csv/1d.csv')
 
    
     
@@ -59,8 +59,8 @@ def main():
     unique2h=unique2h.sort_values(by=['timestamp']).reset_index(drop=True)
     unique4h=pd4h.drop_duplicates(subset='timestamp')
     unique4h=unique4h.sort_values(by=['timestamp']).reset_index(drop=True)
-    unique1d=pd1d.drop_duplicates(subset='timestamp')
-    unique1d=unique1d.sort_values(by=['timestamp']).reset_index(drop=True)
+    # unique1d=pd1d.drop_duplicates(subset='timestamp')
+    # unique1d=unique1d.sort_values(by=['timestamp']).reset_index(drop=True)
     arr={}
 
     #load indicator
@@ -75,8 +75,8 @@ def main():
     arr['2h']=df2h
     df4h=add_indicator(unique4h)
     arr['4h']=df4h
-    df1d=add_indicator(unique1d)
-    arr['1d']=df1d
+    # df1d=add_indicator(unique1d)
+    # arr['1d']=df1d
       
     for i,v in arr.items():
         #check indicator  buy|sell
@@ -101,6 +101,7 @@ def runCheckPnl(change):
                 position=0.01
                 side='long'
                 totalBalance=position*v['close']
+                price=v['close']
                 pnl=0
                 time=v['timestamp']
                 print(f'多单买入:{time}-{price}-{position}-{totalBalance}-{side}')

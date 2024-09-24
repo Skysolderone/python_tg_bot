@@ -8,10 +8,10 @@ class Csv:
         today=datetime.now()
         today_str=today.strftime('%Y-%m-%d')
         symbol = 'BTCUSDT'  # 设置交易对
-        intervals = ['15m', '30m', '1h', '2h', '4h', '1d']  # 定义时间周期
+        intervals = ['15m', '30m', '1h', '2h', '4h']  # 定义时间周期
         # intervals = ['1d']  # 定义时间周期
         # start_date = '2017-08-01'  区间太长，狗在创世期间买入现在都是亿万富翁
-        start_date='2024-01-01'
+        start_date='2024-08-01'
         end_date = today_str
         for interval in intervals:
             indexpd=f"csv/{interval}.csv"
