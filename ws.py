@@ -69,3 +69,6 @@ def generate_signals(df):
             # pd.concat([buy_signals,df.iloc[i]])
             sell_signals.append(df.iloc[i])
     return pd.DataFrame(buy_signals),pd.DataFrame(sell_signals)
+
+
+
