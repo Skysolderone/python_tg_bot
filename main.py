@@ -35,7 +35,7 @@ def getKline(client):
         today_str=today.strftime('%Y-%m-%d')
         # symbol = 'BTCUSDT'  # 设置交易对
         symbol = 'ETHUSDT'  # 设置交易对
-        intervals = ['15m', '30m', '1h', '2h', '4h','1d']  # 定义时间周期
+        intervals = ['5m','15m', '30m', '1h', '2h', '4h','1d']  # 定义时间周期
         # intervals = ['1d']  # 定义时间周期
         # start_date = '2017-08-01'  区间太长，狗在创世期间买入现在都是亿万富翁
         start_date='2024-08-01'
@@ -124,7 +124,8 @@ async def main():
 
     #read local 15m 30m 1h 2h 4h 1d csv
     print('load csv')
-    #pd15m=pd.read_csv('csv/15m.csv')
+    pd5m=pd.read_csv('csv/5m.csv')
+    pd15m=pd.read_csv('csv/15m.csv')
     # pd30m=pd.read_csv('csv/30m.csv')
     # pd1h=pd.read_csv('csv/1h.csv')
     # pd2h=pd.read_csv('csv/2h.csv')
@@ -135,8 +136,10 @@ async def main():
     
    
     #concat kline data
-    #unique15m=pd15m.drop_duplicates(subset='timestamp')
-    #unique15m=unique15m.sort_values(by=['timestamp']).reset_index(drop=True)
+    unique5m=pd5m.drop_duplicates(subset='timestamp')
+    unique5m=unique5m.sort_values(by=['timestamp']).reset_index(drop=True)
+    # unique15m=pd15m.drop_duplicates(subset='timestamp')
+    # unique15m=unique15m.sort_values(by=['timestamp']).reset_index(drop=True)
     # unique30m=pd30m.drop_duplicates(subset='timestamp')
     # unique30m=unique30m.sort_values(by=['timestamp']).reset_index(drop=True)
     # unique1h=pd1h.drop_duplicates(subset='timestamp')
@@ -150,7 +153,7 @@ async def main():
     arr={}
 
     #load indicator
-    print('load indicator')
+    # print('load indicator')
     #df15m=add_indicator(unique15m)
     #arr['15m']=df15m
     # df30m=add_indicator(unique30m)
@@ -178,22 +181,22 @@ async def main():
     # 运行 WebSocket 数据接收
     await bot.send_message(chat_id=chatId,text=f'init bot success')
     # await binance_kline(df15m,bot,chatId)
-    url="wss://stream.binance.com:9443/ws/btcusdt@kline_4h"
+    url="wss://stream.binance.com:9443/ws/btcusdt@kline_5m"
     htime=r.get('4h')
     if htime is None:
-        htime=time.time()
-    if htime<=0:
-        htime=time.time()
+        htime=datetime.now()
+    # if htime<=0:
+        # htime=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     label=1
-    await binance_klineV2(label,url,unique4h,bot,chatId,htime)
-    url="wss://stream.binance.com:9443/ws/btcusdt@kline_1d"
-    dtime=r.get('1d')
-    if dtime is None:
-        dtime=time.time()
-    if dtime<=0:
-        dtime=time.time()
-    label=2
-    await binance_klineV2(label,url,unique1d,bot,chatId,dtime)
+    await binance_klineV2(label,url,unique5m,bot,chatId,htime)
+    # url="wss://stream.binance.com:9443/ws/btcusdt@kline_1d"
+    # dtime=r.get('1d')
+    # if dtime is None:
+    #     dtime=time.time()
+    # if dtime<=0:
+    #     dtime=time.time()
+    # label=2
+    # await binance_klineV2(label,url,unique1d,bot,chatId,dtime)
     
 
 def runCheckPnl(change):
@@ -295,11 +298,14 @@ def add_indicator(df):
     
     return df
 
+s=pd.DataFrame()
 
 async def binance_klineV2(label,url,df,bot,chatid,sendtime):
-    s=df
+    print("satrt kline")
+    global s
     async with websockets.connect(url) as websocket:
         while True:
+            print("receive data")
             # 接收WebSocket数据
             message = await websocket.recv()
             data = json.loads(message)
@@ -315,10 +321,10 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
             close_price = float(kline['c'])
 
             # 输出K线数据
-            # print(f"时间: {timestamp}")
-            # print(f"开盘价: {open_price}, 最高价: {high_price}, 最低价: {low_price}, 收盘价: {close_price}")
-            # print(f"K线结束: {is_kline_closed}")
-            # print("="*40)
+            print(f"时间: {timestamp}")
+            print(f"开盘价: {open_price}, 最高价: {high_price}, 最低价: {low_price}, 收盘价: {close_price}")
+            print(f"K线结束: {is_kline_closed}")
+            print("="*40)
             if is_kline_closed:
                 data = {
     'timestamp': [timestamp],  # 示例时间戳（毫秒）
@@ -334,7 +340,8 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
     'taker_buy_quote_asset_volume': [20000.0],
     'ignore': [0]  # 这里可以根据需要设置
 }
-                s=pd.concat([s,data])
+                d=pd.DataFrame(data)
+                s=pd.concat([df,d])
                 # buy,sell=generate_signals(s)  
                 # buysignal=buy.iloc[-1]
                 # sellsignal=sell.iloc[-1]
@@ -346,22 +353,44 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
                 #     logging.info('{timestamp} sell signal {close_price}')
                 #     message=f'{timestamp} sell signal {close_price}'
                 #     bot.send_message(chat_id=chatid, text=message)
-                _,buy,sell=calculate_td_sequential_with_signals(s)
-                buysignal=buy.iloc[-1]
-                sellsignal=sell.iloc[-1]
-                if buysignal['timestamp']>sendtime:
+                try:
+                    _,buy,sell=calculate_td_sequential_with_signals(s)
+                    print(len(buy))
+                    print(len(sell))
+                    if not buy.empty:
+                        buysignal = buy.iloc[-1]
+                    else:
+                         print("没有买入信号，buy DataFrame 为空")
+                         buysignal = None
+                    buysignal=buy.iloc[-1]
+                    # print(buysignal.columns)
+                    sellsignal=sell.iloc[-1]
+                    # print(type(sendtime))
+                    print(sendtime)
+                    print(sellsignal['timestamp'])
+                    print(type(sellsignal['timestamp']))
+                except Exception as e:
+                    print(e)
+                # 假设 buysignal['timestamp'] 是 '2024-10-24 16:25:00' 这样的字符串
+                buysignal_time = datetime.strptime(buysignal['timestamp'], '%Y-%m-%d %H:%M:%S')
+                sellsignal_time = datetime.strptime(sellsignal['timestamp'], '%Y-%m-%d %H:%M:%S')
+            
+                # sendtime=
+                # sendtime = datetime.strptime(sendtime, '%Y-%m-%d %H:%M:%S')
+                # if buysignal['timestamp']>sendtime:
+                if buysignal_time>sendtime:
                     logging.info('{timestamp} buy signal {close_price}')
                     message=f'{timestamp} buy signal {close_price}'
-                    t=time.time()
+                    t=datetime.now()
                     if label==1:
                         r.set('4h',t)
                     elif label==2:
                         r.set('1d',t)
                     bot.send_message(chat_id=chatid, text=message)
-                if sellsignal['timestamp']>sendtime:
+                if sellsignal_time>sendtime:
                     logging.info('{timestamp} sell signal {close_price}')
                     message=f'{timestamp} sell signal {close_price}'
-                    t=time.time()
+                    t=datetime.now()
                     if label==1:
                         r.set('4h',t)
                     elif label==2:
@@ -383,6 +412,9 @@ def calculate_td_sequential_with_signals(data):
     pd.DataFrame: 返回包含 TD 指标和买入/卖出信号的 DataFrame
     List: 返回买入信号和卖出信号的列表
     """
+    if 'timestamp' not in data.columns or 'close' not in data.columns:
+        raise ValueError("DataFrame 必须包含 'timestamp' 和 'close' 列")
+
     data['TD_Seq'] = 0  # 初始化计数列
     data['Buy_Signal'] = None  # 初始化买入信号列
     data['Sell_Signal'] = None  # 初始化卖出信号列
@@ -405,14 +437,20 @@ def calculate_td_sequential_with_signals(data):
         # 如果计数达到 9，标记买入或卖出信号，并重置计数
         if data['TD_Seq'].iloc[i] == 9:
             data.at[i, 'Buy_Signal'] = data['close'].iloc[i]
-            buy_signals.append({'index': i, 'price': data['close'].iloc[i]})  # 记录买入信号
+            buy_signals.append({'timestamp': data['timestamp'].iloc[i], 'price': data['close'].iloc[i]})  # 记录买入信号
             data.at[i, 'TD_Seq'] = 0  # 重置计数
         elif data['TD_Seq'].iloc[i] == -9:
             data.at[i, 'Sell_Signal'] = data['close'].iloc[i]
-            sell_signals.append({'index': i, 'price': data['close'].iloc[i]})  # 记录卖出信号
+            sell_signals.append({'timestamp': data['timestamp'].iloc[i], 'price': data['close'].iloc[i]})  # 记录卖出信号
             data.at[i, 'TD_Seq'] = 0  # 重置计数
 
-    return data, buy_signals, sell_signals
+     # 将买入和卖出信号列表转换为 DataFrame
+    buy_signals_df = pd.DataFrame(buy_signals).dropna()
+    sell_signals_df = pd.DataFrame(sell_signals).dropna()
+
+    # 去掉原始数据中未发生信号的 NaN 行
+    data.dropna(subset=['Buy_Signal', 'Sell_Signal'], how='all', inplace=True)
+    return data, buy_signals_df, sell_signals_df
 def generate_signals(df):
     buy_signals=[]
     sell_signals=[]
