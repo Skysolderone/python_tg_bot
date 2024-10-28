@@ -181,14 +181,20 @@ async def main():
     # 运行 WebSocket 数据接收
     await bot.send_message(chat_id=chatId,text=f'init bot success')
     # await binance_kline(df15m,bot,chatId)
+    r.delete('4h')
     url="wss://stream.binance.com:9443/ws/btcusdt@kline_5m"
     htime=r.get('4h')
+    global sendtime
     if htime is None:
-        htime=datetime.now()
+        
+        sendtime=datetime.now().timestamp()
+    else :
+        
+        sendtime=datetime.now().timestamp()
     # if htime<=0:
         # htime=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     label=1
-    await binance_klineV2(label,url,unique5m,bot,chatId,htime)
+    await binance_klineV2(label,url,unique5m,bot,chatId)
     # url="wss://stream.binance.com:9443/ws/btcusdt@kline_1d"
     # dtime=r.get('1d')
     # if dtime is None:
@@ -299,13 +305,14 @@ def add_indicator(df):
     return df
 
 s=pd.DataFrame()
-
-async def binance_klineV2(label,url,df,bot,chatid,sendtime):
+sendtime=float
+async def binance_klineV2(label,url,df,bot,chatid):
     print("satrt kline")
     global s
+    global sendtime
     async with websockets.connect(url) as websocket:
         while True:
-            print("receive data")
+            # print("receive data")
             # 接收WebSocket数据
             message = await websocket.recv()
             data = json.loads(message)
@@ -321,10 +328,10 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
             close_price = float(kline['c'])
 
             # 输出K线数据
-            print(f"时间: {timestamp}")
-            print(f"开盘价: {open_price}, 最高价: {high_price}, 最低价: {low_price}, 收盘价: {close_price}")
-            print(f"K线结束: {is_kline_closed}")
-            print("="*40)
+            # print(f"时间: {timestamp}")
+            # print(f"开盘价: {open_price}, 最高价: {high_price}, 最低价: {low_price}, 收盘价: {close_price}")
+            # print(f"K线结束: {is_kline_closed}")
+            # print("="*40)
             if is_kline_closed:
                 data = {
     'timestamp': [timestamp],  # 示例时间戳（毫秒）
@@ -339,7 +346,7 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
     'taker_buy_base_asset_volume': [0.5],
     'taker_buy_quote_asset_volume': [20000.0],
     'ignore': [0]  # 这里可以根据需要设置
-}
+}   
                 d=pd.DataFrame(data)
                 s=pd.concat([df,d])
                 # buy,sell=generate_signals(s)  
@@ -355,8 +362,8 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
                 #     bot.send_message(chat_id=chatid, text=message)
                 try:
                     _,buy,sell=calculate_td_sequential_with_signals(s)
-                    print(len(buy))
-                    print(len(sell))
+                    # print(len(buy))
+                    # print(len(sell))
                     if not buy.empty:
                         buysignal = buy.iloc[-1]
                     else:
@@ -366,36 +373,50 @@ async def binance_klineV2(label,url,df,bot,chatid,sendtime):
                     # print(buysignal.columns)
                     sellsignal=sell.iloc[-1]
                     # print(type(sendtime))
-                    print(sendtime)
-                    print(sellsignal['timestamp'])
-                    print(type(sellsignal['timestamp']))
+                    # print(sendtime)
+                    # print(sellsignal['timestamp'])
+                    # print(type(sellsignal['timestamp']))
                 except Exception as e:
                     print(e)
                 # 假设 buysignal['timestamp'] 是 '2024-10-24 16:25:00' 这样的字符串
                 buysignal_time = datetime.strptime(buysignal['timestamp'], '%Y-%m-%d %H:%M:%S')
                 sellsignal_time = datetime.strptime(sellsignal['timestamp'], '%Y-%m-%d %H:%M:%S')
-            
-                # sendtime=
+
+                # sendtime=datetime.fromtimestamp(sendtime)
+                # 如果 sendtime 本应该是时间戳
+                if isinstance(sendtime, (int, float)):
+                    sendtime = datetime.fromtimestamp(sendtime)
+
+                # if isinstance(sendtime, datetime.datetime):
+                #     sendtime = sendtime.timestamp()
                 # sendtime = datetime.strptime(sendtime, '%Y-%m-%d %H:%M:%S')
                 # if buysignal['timestamp']>sendtime:
+
                 if buysignal_time>sendtime:
                     logging.info('{timestamp} buy signal {close_price}')
                     message=f'{timestamp} buy signal {close_price}'
-                    t=datetime.now()
+                    print(message)
+                    t=datetime.now().timestamp()
                     if label==1:
                         r.set('4h',t)
+                        sendtime=t
+                        print(f'sendtime reset  {sendtime}') 
                     elif label==2:
                         r.set('1d',t)
-                    bot.send_message(chat_id=chatid, text=message)
+                    await bot.send_message(chat_id=chatid, text=message)
+                    continue
                 if sellsignal_time>sendtime:
                     logging.info('{timestamp} sell signal {close_price}')
                     message=f'{timestamp} sell signal {close_price}'
-                    t=datetime.now()
+                    print(message)
+                    t=datetime.now().timestamp()
                     if label==1:
                         r.set('4h',t)
+                        sendtime=t
                     elif label==2:
                         r.set('1d',t)
-                    bot.send_message(chat_id=chatid, text=message)
+                    await bot.send_message(chat_id=chatid, text=message)
+                    continue
 
 
 
